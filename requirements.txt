@@ -18,6 +18,7 @@ cycler==0.12.1
 datasets==4.4.1
 decorator==5.2.1
 dill==0.4.0
+evaluate==0.4.6
 filelock==3.19.1
 flatbuffers==25.9.23
 fonttools==4.61.0
