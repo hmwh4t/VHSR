@@ -211,3 +211,9 @@ PhoWhisper-medium-ct2/
 *.bin
 *.wav
 *.csv
+
+preprocessed_data/
+.python-version
+VietASR_implement.py
+show_data.py
+test_audio_speech.py
