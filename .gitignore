@@ -211,9 +211,10 @@ PhoWhisper-medium-ct2/
 *.bin
 *.wav
 *.csv
-
+*.bz2
 preprocessed_data/
 .python-version
 VietASR_implement.py
 show_data.py
 test_audio_speech.py
+model/
