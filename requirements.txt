@@ -27,6 +27,7 @@ decorator==5.2.1
 deepspeed==0.18.4
 dill==0.4.0
 einops==0.8.1
+emoji==2.15.0
 evaluate==0.4.6
 executing==2.2.1
 filelock==3.19.1

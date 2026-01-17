@@ -282,51 +282,50 @@ Ensure models are downloaded:
 # Classifier model should be in model/checkpoint-XXXXX/
 ```
 
-## Dataset~6.6M samples (~94%)
+## Dataset
+
+The training dataset (`CleanSTT.csv`) is compiled from two Vietnamese hate speech datasets:
+
+### Source Datasets
+
+1. **ViHSD** ([sonlam1102/vihsd](https://huggingface.co/datasets/sonlam1102/vihsd))
+   - Vietnamese Hate Speech Detection dataset
+   - Multi-split dataset with labeled Vietnamese text
+   - Labels: 0 (clean), 1+ (offensive/hate) - mapped to binary
+
+2. **VOZ-HSD** ([tarudesu/VOZ-HSD](https://huggingface.co/datasets/tarudesu/VOZ-HSD))
+   - VOZ Forum Hate Speech Dataset
+   - Community-sourced Vietnamese text
+   - Labels: 0 (clean), 1 (hate)
+
+### Final Dataset Statistics
+
+- **Total samples**: ~7.0M (after deduplication)
+- **clean**: ~6.6M samples (~94%)
 - **hate**: ~428K samples (~6%)
 
-**Class Imbalance Handling**:
+### Class Imbalance Handling
+
 - Weighted Cross-Entropy Loss (weight ratio 1:6 for clean:hate)
 - Bias initialization based on prior probability
 - Stratified train/validation/test split
-- **hate**: 3% of dataset
 
-**Note**: Class imbalance is handled using weighted loss during training.
+### Data Preprocessing
 
-## Contributing
-
-Contributions are welcome! Areas for improvement:
-- [ ] Support for more Vietnamese dialects
-- [ ] Real-time streaming ASR (lower latency)
-- [ ] Mobile/web deployment
-- [ ] Multi-label classification (detect specific hate types)
-- [ ] Data augmentation techniques
-
-## License
-
-This project is for educational purposes. Model licenses:
-- ChunkFormer: Apache 2.0
-- mDeBERTa: MIT License
+The raw datasets undergo extensive preprocessing (`ExtractCleanCSV.py`):
+- Teencode/slang normalization (e.g., "k" → "không", "dm" → "địt mẹ")
+- Emoji removal
+- URL and mention removal
+- Lowercase conversion
+- Special character cleaning
+- Duplicate removal
 
 ## Acknowledgments
 
-- **ChunkFormer ASR**: [khanhld/chunkformer-ctc-large-vie](https://huggingface.co/khanhld/chunkformer-ctc-large-vie)
-- **mDeBERTa**: [Microsoft DeBERTa](https://github.com/microsoft/DeBERTa)
-- Vietnamese NLP community for datasets and resources
+### Models
+- **ChunkFormer ASR**: [khanhld/chunkformer-ctc-large-vie](https://huggingface.co/khanhld/chunkformer-ctc-large-vie) - Vietnamese speech recognition
+- **mDeBERTa**: [Microsoft DeBERTa](https://github.com/microsoft/DeBERTa) - Multilingual transformer for text classification
 
-## Citation
-
-If you use this project, please cite:
-
-```bibtex
-@software{vhsr2026,
-  title={VHSR: Vietnamese Hate Speech Recognition},
-  author={Your Name},
-  year={2026},
-  url={https://github.com/yourusername/VHSR}
-}
-```
-
-## Contact
-
-For questions or issues, please open an issue on GitHub or contact [your-email@example.com]
+### Datasets
+- **ViHSD**: [sonlam1102/vihsd](https://huggingface.co/datasets/sonlam1102/vihsd) - Vietnamese Hate Speech Detection dataset
+- **VOZ-HSD**: [tarudesu/VOZ-HSD](https://huggingface.co/datasets/tarudesu/VOZ-HSD) - VOZ Forum Hate Speech Dataset
