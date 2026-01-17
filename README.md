@@ -228,21 +228,6 @@ ASR_MODEL_PATH = "khanhld/chunkformer-ctc-large-vie"
 CLASSIFIER_MODEL_PATH = "model/checkpoint-25000"
 ```
 
-## Performance
-
-### Classification4-96%
-- **F1-Score (Macro)**: ~0.90+
-- **Precision (Macro)**: ~0.92+
-- **Recall (Macro)**: ~0.90+
-
-**Note**: Model uses weighted loss and bias initialization to handle class imbalance (94% clean vs 6% hate
-- **F1-Score**: 0.90 (hate), 0.96 (clean)
-
-### Inference Speed
-- **ASR**: ~3-5s for 10s audio (GPU)
-- **Classification**: ~50ms per text (GPU)
-- **Total latency**: ~3-6s from speech to result
-
 ## Troubleshooting
 
 ### Audio Input Issues
@@ -298,6 +283,11 @@ The training dataset (`CleanSTT.csv`) is compiled from two Vietnamese hate speec
    - Community-sourced Vietnamese text
    - Labels: 0 (clean), 1 (hate)
 
+3. **Crossmodal-3600** ([Google Crossmodal-3600](https://google.github.io/crossmodal-3600/))
+   - ~40K Vietnamese captions from multilingual image dataset
+   - Used to reduce class4M (after deduplication)
+- **clean**: ~6.64M samples (~94%) - includes ViHSD, VOZ-HSD clean samples + 40K Crossmodal-3600alanced training data
+
 ### Final Dataset Statistics
 
 - **Total samples**: ~7.0M (after deduplication)
@@ -329,3 +319,4 @@ The raw datasets undergo extensive preprocessing (`ExtractCleanCSV.py`):
 ### Datasets
 - **ViHSD**: [sonlam1102/vihsd](https://huggingface.co/datasets/sonlam1102/vihsd) - Vietnamese Hate Speech Detection dataset
 - **VOZ-HSD**: [tarudesu/VOZ-HSD](https://huggingface.co/datasets/tarudesu/VOZ-HSD) - VOZ Forum Hate Speech Dataset
+- **Crossmodal-3600**: [Google Crossmodal-3600](https://google.github.io/crossmodal-3600/) - Multilingual image captions for reducing data bias
