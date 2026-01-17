@@ -1,5 +1,5 @@
 """
-Real-time Vietnamese Speech Recognition using Faster Whisper (CTranslate2)
+Real-time Vietnamese Speech Recognition using Chunkformer-CTC-Large-Vie
 with dynamic noise calibration and VAD-based transcription.
 """
 
@@ -7,29 +7,34 @@ import time
 import threading
 import numpy as np
 import pyaudio
-from faster_whisper import WhisperModel
+import wave
+import tempfile
+import os
+from chunkformer import ChunkFormerModel
 import torch
 
 # =============================================================================
 # Configuration
 # =============================================================================
-MODEL_PATH = "PhoWhisper-medium-ct2"  # Local converted model
+MODEL_PATH = "khanhld/chunkformer-ctc-large-vie"
 LANGUAGE = "vi"
 RATE = 16000
 CHANNELS = 1
 CHUNK = 1024
+INPUT_DEVICE_INDEX = None  # None uses default. Set to integer index (e.g., 0, 1, 2) if default text is silent.
 MAX_RECORDING_DURATION = 30  # Maximum seconds before forced transcription
 SILENCE_THRESHOLD = 0.01     # Base amplitude threshold (dynamically adjusted)
 SILENCE_DURATION = 2.0       # Seconds of silence to trigger transcription
-NOISE_CALIBRATION_DURATION = 5.0  # Seconds to record for noise calibration
+NOISE_CALIBRATION_DURATION = 2.0  # Seconds to record for noise calibration
 
 # =============================================================================
 # Initialize Model
 # =============================================================================
 device = "cuda" if torch.cuda.is_available() else "cpu"
-compute_type = "float16" if device == "cuda" else "int8"
-print(f"Loading model '{MODEL_PATH}' on {device} with {compute_type}...")
-model = WhisperModel(MODEL_PATH, device=device, compute_type=compute_type)
+print(f"Loading ChunkFormer model '{MODEL_PATH}' on {device}...")
+model = ChunkFormerModel.from_pretrained(MODEL_PATH)
+if device == "cuda":
+    model = model.cuda()
 print("Model loaded.")
 
 # =============================================================================
@@ -40,6 +45,25 @@ recording = True
 speech_active = False
 lock = threading.Lock()
 last_speech_time = time.time()
+
+
+def list_audio_devices():
+    """List available audio input devices to help select the correct index."""
+    p = pyaudio.PyAudio()
+    try:
+        info = p.get_host_api_info_by_index(0)
+        numdevices = info.get('deviceCount')
+        
+        print("\nAvailable Audio Input Devices:")
+        for i in range(0, numdevices):
+            if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                name = p.get_device_info_by_host_api_device_index(0, i).get('name')
+                print(f"Index {i}: {name}")
+        print("------------------------------------------------\n")
+    except Exception as e:
+        print(f"Error listing audio devices: {e}")
+    finally:
+        p.terminate()
 
 
 def calibrate_noise():
@@ -57,6 +81,7 @@ def calibrate_noise():
         channels=CHANNELS,
         rate=RATE,
         input=True,
+        input_device_index=INPUT_DEVICE_INDEX,
         frames_per_buffer=CHUNK
     )
     
@@ -75,6 +100,9 @@ def calibrate_noise():
     noise_audio = np.concatenate(frames)
     noise_rms = np.sqrt(np.mean(noise_audio ** 2))
     
+    if noise_rms == 0.0:
+        print("WARNING: Background noise RMS is 0.0. The microphone might be muted or the wrong device index is selected.")
+
     # Set threshold to 2x the noise floor (minimum of base threshold)
     new_threshold = max(SILENCE_THRESHOLD, noise_rms * 2.0)
     SILENCE_THRESHOLD = new_threshold
@@ -95,6 +123,7 @@ def record_audio():
         channels=CHANNELS,
         rate=RATE,
         input=True,
+        input_device_index=INPUT_DEVICE_INDEX,
         frames_per_buffer=CHUNK
     )
     
@@ -165,26 +194,48 @@ def transcribe_loop():
                 audio_buffer = np.array([], dtype=np.float32)
             
             if len(audio_to_process) > 0:
-                # Use VAD filter to help with any remaining noise
-                segments, _ = model.transcribe(
-                    audio_to_process,
-                    beam_size=5,
-                    language=LANGUAGE,
-                    task="transcribe",
-                    vad_filter=True
-                )
-                
-                full_text = "".join(segment.text for segment in segments)
-                
-                if full_text.strip():
-                    elapsed = int(current_time - start_time)
-                    print(f"[{elapsed}s]: {full_text}")
+                temp_filename = None
+                try:
+                    # Save buffer to temp file as ChunkFormer expects a file path
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                        temp_filename = f.name
+                        with wave.open(temp_filename, 'wb') as wf:
+                            wf.setnchannels(CHANNELS)
+                            wf.setsampwidth(2) # 16-bit
+                            wf.setframerate(RATE)
+                            # Convert float32 [-1, 1] to int16
+                            audio_int16 = (audio_to_process * 32767).astype(np.int16)
+                            wf.writeframes(audio_int16.tobytes())
+                    
+                    # Call ChunkFormer
+                    full_text = model.endless_decode(
+                        audio_path=temp_filename,
+                        chunk_size=64,
+                        left_context_size=128,
+                        right_context_size=128,
+                        total_batch_duration=14400,
+                        return_timestamps=False
+                    )
+                    
+                    if str(full_text).strip():
+                        elapsed = int(current_time - start_time)
+                        print(f"[{elapsed}s]: {full_text}")
+
+                except Exception as e:
+                    print(f"Transcription error: {e}")
+                finally:
+                    # Clean up temporary file
+                    if temp_filename and os.path.exists(temp_filename):
+                        os.remove(temp_filename)
         
         time.sleep(0.1)
 
 
 def main():
     global recording
+    
+    # List devices so user knows what indices are available
+    list_audio_devices()
     
     # Calibrate noise threshold
     calibrate_noise()

@@ -218,3 +218,5 @@ VietASR_implement.py
 show_data.py
 test_audio_speech.py
 model/
+DeBERTa_Train_Colab.py
+filter_con.py

@@ -139,40 +139,6 @@ def classify_batch(texts: list, tokenizer, model, device) -> list:
 def main():
     # Load model
     tokenizer, model, device = load_model()
-    
-    # Example texts for testing (Vietnamese)
-    test_texts = [
-        "Chào bạn, hôm nay bạn khỏe không?",  # Clean - greeting
-        "Sản phẩm này rất tốt, tôi rất hài lòng",  # Clean - positive review
-        "Thời tiết hôm nay đẹp quá",  # Clean - neutral
-        "Mày là đồ ngu, câm mồm đi",  # Hate speech
-        "Cảm ơn bạn đã giúp đỡ tôi",  # Clean - gratitude
-    ]
-    
-    print("\n" + "="*60)
-    print("SINGLE TEXT CLASSIFICATION")
-    print("="*60)
-    
-    for text in test_texts:
-        result = classify_text(text, tokenizer, model, device)
-        print(f"\nText: {result['text']}")
-        print(f"Label: {result['predicted_label']} (confidence: {result['confidence']:.4f})")
-        print(f"Probabilities: clean={result['probabilities']['clean']:.4f}, hate={result['probabilities']['hate']:.4f}")
-    
-    print("\n" + "="*60)
-    print("BATCH CLASSIFICATION")
-    print("="*60)
-    
-    batch_results = classify_batch(test_texts, tokenizer, model, device)
-    for result in batch_results:
-        print(f"\n[{result['predicted_label'].upper()}] {result['text'][:50]}...")
-        print(f"  Confidence: {result['confidence']:.4f}")
-    
-    # Interactive mode
-    print("\n" + "="*60)
-    print("INTERACTIVE MODE (type 'quit' to exit)")
-    print("="*60)
-    
     while True:
         try:
             user_input = input("\nEnter text to classify: ").strip()
