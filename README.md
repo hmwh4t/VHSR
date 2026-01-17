@@ -1,2 +1,332 @@
-# VHSR
-Vietnamese Hate Speech Audio Recognition
+# VHSR - Vietnamese Hate Speech Recognition
+
+Real-time audio-based hate speech detection system for Vietnamese language, combining Automatic Speech Recognition (ASR) with text classification.
+
+## Overview
+
+VHSR is an end-to-end pipeline that:
+1. **Transcribes** Vietnamese speech to text using ASR models
+2. **Classifies** the transcribed text into two categories:
+   - **Clean**: Normal, non-offensive speech
+   - **Hate**: Hate speech, toxic, or harmful content
+
+## Features
+
+- **Real-time Processing**: Live audio recording with Voice Activity Detection (VAD)
+- **Robust Noise Calibration**: Adaptive silence threshold based on ambient noise
+- **Interactive Jupyter Widget**: User-friendly interface for recording and classification
+- **High Accuracy**: Uses state-of-the-art models (ChunkFormer ASR + mDeBERTa classifier)
+- **GPU Accelerated**: Optimized for CUDA-enabled devices
+
+## Project Structure
+
+```
+VHSR/
+├── realtime_asr_classification.ipynb   # Main interactive notebook
+├── DeBERTa_Train_Colab.py             # Training script for mDeBERTa classifier
+├── preprocess_data.py                  # Dataset preprocessing and tokenization
+├── realtime_transcribe.py              # Real-time ASR using Faster Whisper
+├── test_audio_speech.py                # ASR testing utilities
+├── test_deberta_classification.py      # Classifier testing
+├── CleanSTT.csv                        # Training dataset
+├── model/                              # Trained classifier models
+│   ├── checkpoint-25000/              # Best model checkpoint
+│   └── checkpoint-40000/
+├── preprocessed_data/                  # Tokenized datasets
+│   ├── train/
+│   ├── validation/
+│   └── test/
+└── requirements.txt                    # Python dependencies
+```
+
+## Models
+
+### ASR (Automatic Speech Recognition)
+- **Model**: [khanhld/chunkformer-ctc-large-vie](https://huggingface.co/khanhld/chunkformer-ctc-large-vie)
+- **Architecture**: ChunkFormer with CTC loss
+- **Purpose**: Converts Vietnamese audio to text
+
+### Text Classification
+- **Model**: microsoft/mdeberta-v3-base (fine-tuned)
+- **Architecture**: Multilingual DeBERTa v3
+- **Classes**: 2 classes (clean, hate)
+- **Training**: Fine-tuned on Vietnamese hate speech dataset with class weights
+- **Class Balance**: ~94% clean, ~6% hate (handled with weighted loss)
+
+## Installation
+
+### Prerequisites
+- Python 3.8+
+- CUDA-compatible GPU (recommended)
+- PortAudio (for PyAudio)
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Install PortAudio (for audio recording)
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install portaudio19-dev
+```
+
+**MacOS:**
+```bash
+brew install portaudio
+```
+
+**Windows:**
+Download from [PortAudio website](http://www.portaudio.com/)
+
+## Quick Start
+
+### 1. Interactive Real-time Classification (Recommended)
+
+Open and run the Jupyter notebook:
+
+```bash
+jupyter notebook realtime_asr_classification.ipynb
+```
+
+Follow the notebook steps:
+1. Load models
+2. Calibrate noise (stay silent for 3 seconds)
+3. Start recording and speaking
+4. View real-time transcription and classification results
+
+### 2. Command-line Real-time Transcription
+
+```bash
+python realtime_transcribe.py
+```
+
+### 3. Test Classification on Text
+
+```python
+from test_deberta_classification import classify_text
+
+text = "Xin chào, hôm nay trời đẹp quá"
+result = classify_text(text)
+print(result)
+# Output: {'predicted_label': 'clean', 'confidence': 0.99, ...}
+```
+
+## Training Your Own Model
+
+### 1. Prepare Dataset
+
+Your dataset should be a CSV file with columns:
+- `text`: Vietnamese texthate']
+
+Example:
+```csv
+text,label
+"Xin chào bạn",clean
+"Mày ngu như cặc",hat
+"Mày ngu quá",offensive
+"Đập chết nó đi",hate
+```
+
+### 2. Preprocess Data
+
+```bash
+python preprocess_data.py
+```
+
+This will:
+- Tokenize the dataset
+- Split into train/validation/test sets
+- Save to `preprocessed_data/` directory
+
+### 3. Train the Model
+
+```bash
+python DeBERTa_Train_Colab.py
+```
+
+Configuration options in the script:
+- `MODEL_NAME`: Base model to fine-tune
+- `OUTPUT_DIR`: Where to save checkpoints
+- `BATCH_SIZE`: Adjust based on GPU memory
+- `NUM_EPOCHS`: Number of training epochs
+- `LEARNING_RATE`: Learning rate for optimization
+
+### 4. Use the Trained Model
+
+Update the model path in `realtime_asr_classification.ipynb`:
+
+```python
+config.CLASSIFIER_MODEL_PATH = "path/to/your/checkpoint"
+```
+
+## Usage Examples
+
+### Interactive Widget
+
+```python
+from realtime_asr_classification import RealtimeASRClassifierWidget
+
+# Initialize
+pipeline = RealtimeASRClassifierWidget(config, calibrator)
+
+# Display widget
+pipeline.display()
+
+# Start recording (use GUI button or programmatically)
+pipeline.start()
+
+# Get results
+results = pipeline.get_results()
+```
+
+### Programmatic Classification
+
+```python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+
+# Load model
+model_path = "model/checkpoint-25000"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
+
+# Classify
+text = "Your Vietnamese text here"128)
+outputs = model(**inputs)
+probs = torch.softmax(outputs.logits, dim=-1)
+predicted_class = torch.argmax(probs, dim=-1).item()
+
+# Get label
+label = model.config.id2label[predicted_class]  # 'clean' or 'hate'
+confidence = probs[0][predicted_class]
+predicted_class = torch.argmax(probs, dim=-1).item()
+```
+
+## Configuration
+
+### Audio Settings
+
+In `realtime_asr_classification.ipynb`, modify the `Config` class:
+
+```python
+@dataclass
+class Config:
+    SAMPLE_RATE: int = 16000              # Audio sample rate
+    CHUNK_SIZE: int = 1024                # Audio chunk size
+    MAX_RECORDING_DURATION: float = 30.0  # Max seconds per segment
+    SILENCE_DURATION: float = 2.0         # Silence threshold (seconds)
+    NOISE_MULTIPLIER: float = 2.5         # Noise threshold multiplier
+```
+
+### Model Paths
+
+```python
+ASR_MODEL_PATH = "khanhld/chunkformer-ctc-large-vie"
+CLASSIFIER_MODEL_PATH = "model/checkpoint-25000"
+```
+
+## Performance
+
+### Classification4-96%
+- **F1-Score (Macro)**: ~0.90+
+- **Precision (Macro)**: ~0.92+
+- **Recall (Macro)**: ~0.90+
+
+**Note**: Model uses weighted loss and bias initialization to handle class imbalance (94% clean vs 6% hate
+- **F1-Score**: 0.90 (hate), 0.96 (clean)
+
+### Inference Speed
+- **ASR**: ~3-5s for 10s audio (GPU)
+- **Classification**: ~50ms per text (GPU)
+- **Total latency**: ~3-6s from speech to result
+
+## Troubleshooting
+
+### Audio Input Issues
+
+**No audio detected:**
+```python
+# List available audio devices
+calibrator.list_audio_devices()
+
+# Set specific device
+config.INPUT_DEVICE_INDEX = 0  # Use device index from list
+```
+
+**High background noise:**
+```python
+# Increase noise calibration duration
+config.NOISE_CALIBRATION_DURATION = 5.0
+
+# Adjust noise multiplier
+config.NOISE_MULTIPLIER = 3.0
+```
+
+### CUDA Out of Memory
+
+Reduce batch size or use CPU:
+```python
+device = "cpu"
+# Or reduce batch size in training:
+BATCH_SIZE = 8  # Instead of 16
+```
+
+### Model Loading Issues
+
+Ensure models are downloaded:
+```bash
+# ASR model will auto-download on first use
+# Classifier model should be in model/checkpoint-XXXXX/
+```
+
+## Dataset~6.6M samples (~94%)
+- **hate**: ~428K samples (~6%)
+
+**Class Imbalance Handling**:
+- Weighted Cross-Entropy Loss (weight ratio 1:6 for clean:hate)
+- Bias initialization based on prior probability
+- Stratified train/validation/test split
+- **hate**: 3% of dataset
+
+**Note**: Class imbalance is handled using weighted loss during training.
+
+## Contributing
+
+Contributions are welcome! Areas for improvement:
+- [ ] Support for more Vietnamese dialects
+- [ ] Real-time streaming ASR (lower latency)
+- [ ] Mobile/web deployment
+- [ ] Multi-label classification (detect specific hate types)
+- [ ] Data augmentation techniques
+
+## License
+
+This project is for educational purposes. Model licenses:
+- ChunkFormer: Apache 2.0
+- mDeBERTa: MIT License
+
+## Acknowledgments
+
+- **ChunkFormer ASR**: [khanhld/chunkformer-ctc-large-vie](https://huggingface.co/khanhld/chunkformer-ctc-large-vie)
+- **mDeBERTa**: [Microsoft DeBERTa](https://github.com/microsoft/DeBERTa)
+- Vietnamese NLP community for datasets and resources
+
+## Citation
+
+If you use this project, please cite:
+
+```bibtex
+@software{vhsr2026,
+  title={VHSR: Vietnamese Hate Speech Recognition},
+  author={Your Name},
+  year={2026},
+  url={https://github.com/yourusername/VHSR}
+}
+```
+
+## Contact
+
+For questions or issues, please open an issue on GitHub or contact [your-email@example.com]
