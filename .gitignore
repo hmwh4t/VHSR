@@ -207,7 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 # Model files (too large for git)
-model/
 PhoWhisper-medium-ct2/
 *.bin
 *.wav
@@ -220,3 +219,4 @@ show_data.py
 test_audio_speech.py
 DeBERTa_Train_Colab.py
 filter_con.py
+model/
